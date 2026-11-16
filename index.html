@@ -3,16 +3,66 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>我的物品清冊</title>
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#24533f">
-<link rel="icon" href="./icon.svg" type="image/svg+xml">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f6f4ed;color:#233a31;font:16px/1.5 "Microsoft JhengHei",sans-serif}main{max-width:850px;margin:auto;padding:32px 18px}h1{font-size:clamp(32px,7vw,56px);margin:0}h2,h3,p{margin:0 0 8px}header{margin-bottom:24px}section,article{background:#fff;border:1px solid #dedfd3;border-radius:16px;padding:18px;margin:12px 0}label{display:block}input,button,select{font:inherit;padding:9px 12px;border:1px solid #84968a;border-radius:8px}input,select{width:100%;background:white;color:inherit}button{cursor:pointer;background:white;color:inherit}button[type=submit]{background:#24533f;color:white}button:hover{border-color:#153b2c}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #b47626;outline-offset:2px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}article p{overflow-wrap:anywhere}article h3{overflow-wrap:anywhere;color:#8a6100}.place{font-weight:bold;color:#24533f}footer{margin-top:20px}#status{min-height:1.5em;margin-top:8px}
 .photo{width:112px;height:112px;object-fit:contain;background:#f6f4ed;border-radius:10px;margin:8px 0}.photo-tools{margin-top:12px}#suggestions{margin-bottom:12px}
-.gallery{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}.gallery figure{margin:0}.gallery .photo{width:148px;height:116px;display:block}.gallery figcaption{font-size:.9rem}.location-card{text-align:left}.location-card img{display:block;width:96px;height:72px;object-fit:contain;margin-bottom:4px}.location-card[aria-pressed="true"]{background:#24533f;color:white}#save-item:active{transform:translateY(2px);background:#173c2b}
+.gallery{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}.gallery figure{margin:0}.gallery .photo{width:148px;height:var(--result-photo-height);display:block}.gallery figcaption{font-size:.9rem}.location-card{text-align:left}.location-card img{display:block;width:96px;height:72px;object-fit:contain;margin-bottom:4px}.location-card[aria-pressed="true"]{background:#24533f;color:white}#save-item:active{transform:translateY(2px);background:#173c2b}
 #save-item:disabled{background:#dcebe0;color:#24533f;cursor:default}
 #status:not(:empty){font-weight:bold}
-summary{cursor:pointer;font-weight:bold}#form-title{font-size:1.4rem}#pages:not(:empty){margin-top:16px}[role="tab"][aria-selected="true"]{background:#24533f;color:white}[role="tabpanel"][hidden]{display:none}</style>
+summary{cursor:pointer;font-weight:bold}#form-title{font-size:1.4rem}#pages:not(:empty){margin-top:16px}[role="tab"][aria-selected="true"]{background:#24533f;color:white}[role="tabpanel"][hidden]{display:none}.backup-settings{margin-top:10px}.photo-zoom{padding:0;border:0;border-radius:10px;cursor:zoom-in}
+.photo-zoom .photo{margin:0}
+#photo-dialog{width:min(92vw,900px);max-height:92vh;border:1px solid #84968a;border-radius:16px;color:inherit;padding:16px}
+#photo-dialog::backdrop{background:rgba(0,0,0,.68)}
+.photo-dialog-bar{margin-bottom:12px}
+.photo-dialog-bar h2{flex:1 1 180px;margin:0;overflow-wrap:anywhere}
+#photo-large{display:block;width:100%;max-height:74vh;object-fit:contain}
+.gallery{align-items:flex-start}.item-note{flex:1 1 220px;min-width:0;background:#f6f4ed;border-radius:8px;padding:10px 12px}.item-note p{white-space:pre-wrap;margin:4px 0 0}.gallery{--result-photo-height:116px}.gallery:has(.photo-zoom) .item-note{height:var(--result-photo-height);overflow-y:auto}.item-photo-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px 28px;align-items:start;max-width:560px}.item-photo-fields>.photo-tools{min-width:0;max-width:280px}.photo-action{display:inline-flex;align-items:center;justify-content:center;gap:.45em;min-height:42px;padding:8px 12px;border:1px solid transparent;border-radius:10px;font-weight:600;line-height:1.3;transition:background-color .18s,border-color .18s,box-shadow .18s,transform .18s}
+.photo-action[hidden]{display:none}
+.photo-action svg{width:1.1em;height:1.1em;flex:none}
+.photo-pick{background:#24533f;color:#fff;border-color:#24533f;--button-ring-width:2px}
+.photo-scan{background:#fff3d3;border-color:#e6ce89;color:#694900}
+.photo-remove{background:#fff7f5;border-color:#ead5d0;color:#873e32}
+@media(hover:hover){
+  .photo-action:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 4px 10px #233a3122}
+  .photo-pick:not(:disabled):hover{background:#193f30}
+  .photo-scan:not(:disabled):hover{background:#ffebba;border-color:#be9a43}
+  .photo-remove:not(:disabled):hover{background:#fbe8e3;border-color:#bf8b81}
+}
+.photo-action:not(:disabled):active{transform:translateY(1px);box-shadow:inset 0 2px 4px #233a3122}
+.photo-action:disabled{opacity:.65;cursor:wait}
+.photo-scan[aria-busy="true"] svg{display:none}
+.photo-scan[aria-busy="true"]::before{content:"";width:.85em;height:.85em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:photo-spin .75s linear infinite}
+@keyframes photo-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+  .photo-action{transition:none}
+  .photo-action:not(:disabled):is(:hover,:active){transform:none}
+  .photo-scan[aria-busy="true"]::before{animation:none}
+}
+button, #photo-download{
+  --button-shadow:0 2px 5px #233a3118;
+  box-shadow:inset 0 0 0 var(--button-ring-width,2px) #fff,var(--button-shadow);
+  transition:background-color .18s,border-color .18s,box-shadow .18s,transform .18s;
+}
+button:not(.photo-action):not(.photo-zoom):not([aria-selected="true"]):not([aria-pressed="true"]):not([type="submit"]), #photo-download{
+  background:#f6f4ed;
+}
+#photo-download{display:inline-flex;align-items:center;padding:9px 12px;border:1px solid #84968a;border-radius:8px;color:inherit}
+@media(hover:hover){
+  button:not(:disabled):hover, #photo-download:hover{
+    transform:translateY(-1px);
+    box-shadow:inset 0 0 0 var(--button-ring-width,2px) #fff,0 4px 10px #233a3129;
+  }
+}
+button:not(:disabled):active, #photo-download:active{
+  transform:translateY(1px);
+  box-shadow:inset 0 0 0 var(--button-ring-width,2px) #fff,0 1px 3px #233a3122;
+}
+button:disabled{box-shadow:inset 0 0 0 var(--button-ring-width,2px) #fff}
+@media(prefers-reduced-motion:reduce){
+  button, #photo-download{transition:none}
+  button:not(:disabled):is(:hover,:active), #photo-download:is(:hover,:active), #save-item:active{transform:none}
+}
+@media(pointer:coarse){.photo-action{min-height:44px}}</style>
 <main>
 <header><h1>我的物品清冊</h1><p>記下你有哪些東西，以及去哪裡找。</p></header>
 <nav class="actions" role="tablist" aria-label="清冊功能">
@@ -22,13 +72,23 @@ summary{cursor:pointer;font-weight:bold}#form-title{font-size:1.4rem}#pages:not(
 <section id="editor" role="tabpanel" aria-labelledby="add-tab" hidden>
 <h2 id="form-title">新增物品</h2>
 <form id="entry">
+<div class="item-photo-fields">
 <div class="photo-tools">
 <label for="photo-file">物品照片（必填）</label>
-<div class="actions"><button type="button" id="photo-choose">選擇照片</button><span id="photo-selection" role="status">尚未選取照片</span></div><input id="photo-file" type="file" accept="image/*" hidden>
+<div class="actions"><button type="button" id="photo-choose" class="photo-action photo-pick"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h4l1.5-2h5L16 8h4v11H4z"/><circle cx="12" cy="13" r="3"/></svg><span>選擇照片</span></button><button type="button" id="photo-camera" class="photo-action photo-pick" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h4l1.5-2h5L16 8h4v11H4z"/><circle cx="12" cy="13" r="3"/></svg><span>拍照</span></button></div><input id="photo-file" type="file" accept="image/*" hidden>
 <img id="photo-preview" class="photo" alt="物品照片預覽" hidden>
-<div class="actions"><button type="button" id="recognize" hidden>辨識照片</button><button type="button" id="remove-photo" hidden>移除照片</button></div>
-<p id="photo-status" role="status"></p>
+<div class="actions"><button type="button" id="recognize" class="photo-action photo-scan" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5M8 12h8"/></svg><span>辨識照片</span></button><button type="button" id="remove-photo" class="photo-action photo-remove" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg><span>移除照片</span></button></div>
+<p id="photo-selection" role="status">尚未選取照片</p><p id="photo-status" role="status"></p>
 <div id="suggestions" class="actions"></div>
+</div>
+<div class="photo-tools">
+<label for="extra-file">第二張物品照片（選填）</label>
+<div class="actions"><button type="button" id="extra-choose" class="photo-action photo-pick" aria-label="選擇第二張物品照片"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h4l1.5-2h5L16 8h4v11H4z"/><circle cx="12" cy="13" r="3"/></svg><span>選擇照片</span></button><button type="button" id="extra-camera" class="photo-action photo-pick" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h4l1.5-2h5L16 8h4v11H4z"/><circle cx="12" cy="13" r="3"/></svg><span>拍照</span></button></div>
+<input id="extra-file" type="file" accept="image/*" hidden>
+<img id="extra-preview" class="photo" alt="第二張物品照片預覽" hidden>
+<div class="actions"><button type="button" id="extra-remove" class="photo-action photo-remove" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg><span>移除第二張照片</span></button></div>
+<p id="extra-status" role="status"></p>
+</div>
 </div>
 <div class="grid">
 <label>物品名稱<input name="name" required maxlength="120" placeholder="例：備用充電線"></label>
@@ -37,9 +97,9 @@ summary{cursor:pointer;font-weight:bold}#form-title{font-size:1.4rem}#pages:not(
 </div>
 <div class="photo-tools">
 <label for="place-file">收納位置照片（選填，同名位置共用）</label>
-<div class="actions"><button type="button" id="place-choose">選擇照片</button><span id="place-selection" role="status">尚未選取照片</span></div><input id="place-file" type="file" accept="image/*" hidden>
+<div class="actions"><button type="button" id="place-choose" class="photo-action photo-pick"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h4l1.5-2h5L16 8h4v11H4z"/><circle cx="12" cy="13" r="3"/></svg><span>選擇照片</span></button><button type="button" id="place-camera" class="photo-action photo-pick" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h4l1.5-2h5L16 8h4v11H4z"/><circle cx="12" cy="13" r="3"/></svg><span>拍照</span></button><span id="place-selection" role="status">尚未選取照片</span></div><input id="place-file" type="file" accept="image/*" hidden>
 <img id="place-preview" class="photo" alt="收納位置照片預覽" hidden>
-<div><button type="button" id="remove-place-photo" hidden>移除位置照片</button></div>
+<div><button type="button" id="remove-place-photo" class="photo-action photo-remove" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg><span>移除位置照片</span></button></div>
 <p id="place-status" role="status"></p>
 </div>
 <div class="actions"><button type="submit" id="save-item" hidden>儲存物品</button><button type="button" id="cancel" hidden>取消編輯</button></div>
@@ -53,40 +113,40 @@ summary{cursor:pointer;font-weight:bold}#form-title{font-size:1.4rem}#pages:not(
 <label>依位置瀏覽<select id="location"></select></label></div>
 <details id="location-gallery"><summary>看位置照片</summary><div id="location-cards" class="actions" aria-label="收納位置"></div></details><p id="count" tabindex="-1" aria-live="polite"></p><div id="items"></div><div id="pages" class="actions"></div>
 </section>
-<footer><p>清冊及照片儲存在這台手機的瀏覽器資料庫（IndexedDB）。首次安裝需連網；已安裝後可離線查找，照片辨識首次使用需連網。請定期將完整 JSON 備份存到手機以外的地方。</p>
+<footer><p>清冊和縮圖儲存在這個瀏覽器。辨識需要連網載入模型，照片在瀏覽器內處理。換裝置或清除瀏覽資料前，可先匯出備份。</p>
 <div class="actions"><button id="export">匯出備份</button><button id="import">匯入備份</button><input id="file" type="file" accept=".json,application/json" hidden></div>
+<div class="actions backup-settings"><button id="backup-folder" hidden>設定備份資料夾</button><span id="backup-folder-hint" hidden>第一次使用備份功能前，請先設定備份資料夾。</span></div>
 <p id="backup-status" role="status"></p></footer>
+<dialog id="photo-dialog" aria-labelledby="photo-dialog-title">
+  <div class="actions photo-dialog-bar">
+    <h2 id="photo-dialog-title"></h2>
+    <a id="photo-download">下載照片</a>
+    <form method="dialog"><button autofocus>關閉</button></form>
+  </div>
+  <img id="photo-large" alt="">
+</dialog>
 </main>
 <script>
 'use strict';
 const key = 'personal-inventory-v1';
-const DB_NAME = 'inventory-android-v1';
-const DB_STORE = 'inventory';
-let database;
-function openDatabase() {
-  return new Promise((resolve,reject) => {
-    const req = indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-function dbGet() {
-  return new Promise((resolve,reject) => {
-    const tx=database.transaction(DB_STORE,'readonly');
-    const req=tx.objectStore(DB_STORE).get('items');
-    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
-  });
-}
-function dbPut(value) {
-  return new Promise((resolve,reject) => {
-    const tx=database.transaction(DB_STORE,'readwrite');
-    tx.objectStore(DB_STORE).put(value,'items');
-    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
-  });
+const byId = id => document.getElementById(id);
+const photoDialog = byId('photo-dialog');
+const largePhoto = byId('photo-large');
+photoDialog.addEventListener('close', () => {
+  largePhoto.removeAttribute('src');
+  byId('photo-download').removeAttribute('href');
+});
+
+function openPhoto(source, title, label) {
+  byId('photo-dialog-title').textContent = title;
+  largePhoto.alt = title;
+  largePhoto.src = source;
+  const download = byId('photo-download');
+  download.href = source;
+  download.download = label + '.jpg';
+  photoDialog.showModal();
 }
 
-const byId = id => document.getElementById(id);
 const form = byId('entry');
 const tabs = [byId('add-tab'), byId('find-tab')];
 
@@ -122,7 +182,7 @@ const backupStatus = byId('backup-status');
 const locationFilter = byId('location');
 let entries = [];
 let editing = null;
-let readable = true;
+let readable = false;
 let photo = '';
 let photoRevision = 0;
 let activePlace = '';
@@ -148,7 +208,7 @@ function syncPlacePhoto() {
 
 function updateSaveVisibility() {
   const hasText = [fields.name, fields.place, fields.note].some(field => field.value.trim());
-  saveButton.hidden = !(saveButton.disabled || hasText || photo || placePhoto);
+  saveButton.hidden = !(saveButton.disabled || hasText || photo || extraPhoto || placePhoto);
 }
 
 form.addEventListener('input', updateSaveVisibility);
@@ -184,6 +244,7 @@ function showPhoto(value, selection = '已有物品照片') {
   else preview.removeAttribute('src');
   recognize.hidden = !value;
   recognize.disabled = false;
+  recognize.removeAttribute('aria-busy');
   byId('remove-photo').hidden = !value;
   suggestions.replaceChildren();
   photoStatus.textContent = '';
@@ -235,6 +296,7 @@ recognize.onclick = async () => {
   const revision = photoRevision;
   recognize.disabled = true;
   suggestions.replaceChildren();
+  recognize.setAttribute('aria-busy', 'true');
   photoStatus.textContent = '正在載入模型並辨識照片…';
   try {
     const model = await getModel();
@@ -259,12 +321,15 @@ recognize.onclick = async () => {
   } catch {
     if (revision === photoRevision) photoStatus.textContent = '辨識失敗，請確認網路連線後重試。你也可以自行填寫名稱並保存照片。';
   } finally {
-    if (revision === photoRevision) recognize.disabled = false;
+    if (revision === photoRevision) {
+      recognize.disabled = false;
+      recognize.removeAttribute('aria-busy');
+    }
   }
 };
 
-photoFile.onchange = async () => {
-  const file = photoFile.files[0];
+photoFile.onchange = async event => {
+  const file = event.currentTarget.files[0];
   if (!file) return;
   const revision = ++photoRevision;
   recognize.disabled = true;
@@ -279,6 +344,7 @@ photoFile.onchange = async () => {
     if (revision === photoRevision) {
       photoFile.value = '';
       recognize.disabled = false;
+      recognize.removeAttribute('aria-busy');
       photoStatus.textContent = '無法開啟這張圖片，請試試 JPG 或 PNG。';
     }
   }
@@ -312,8 +378,8 @@ placeFile.onclick = event => {
   placeStatus.textContent = '請先輸入或選擇收納位置，再加入位置照片。';
   fields.place.focus();
 };
-placeFile.onchange = async () => {
-  const selected = placeFile.files[0];
+placeFile.onchange = async event => {
+  const selected = event.currentTarget.files[0];
   if (!selected) return;
   const revision = ++placeRevision;
   placeStatus.textContent = '正在讀取位置照片…';
@@ -329,6 +395,46 @@ placeFile.onchange = async () => {
 };
 removePlacePhoto.onclick = () => showPlacePhoto('');
 
+let extraPhoto = '';
+let extraRevision = 0;
+let extraLoading = false;
+const extraFile = byId('extra-file');
+const extraPreview = byId('extra-preview');
+const extraStatus = byId('extra-status');
+const extraRemove = byId('extra-remove');
+
+function showExtraPhoto(value) {
+  extraRevision++;
+  extraLoading = false;
+  extraPhoto = value;
+  extraFile.value = '';
+  extraPreview.hidden = !value;
+  extraRemove.hidden = !value;
+  if (value) extraPreview.src = value;
+  else extraPreview.removeAttribute('src');
+  extraStatus.textContent = value ? '已加入第二張照片' : '';
+  updateSaveVisibility();
+}
+
+byId('extra-choose').onclick = () => extraFile.click();
+extraRemove.onclick = () => showExtraPhoto('');
+extraFile.onchange = async event => {
+  const file = event.currentTarget.files[0];
+  if (!file) return;
+  const revision = ++extraRevision;
+  extraLoading = true;
+  extraStatus.textContent = '正在讀取第二張照片…';
+  try {
+    const thumbnail = await readThumbnail(file);
+    if (revision === extraRevision) showExtraPhoto(thumbnail);
+  } catch {
+    if (revision !== extraRevision) return;
+    extraLoading = false;
+    extraFile.value = '';
+    extraStatus.textContent = extraPhoto ? '無法讀取新照片，已保留上一張。' : '無法讀取第二張照片。';
+  }
+};
+
 function validPhoto(value) {
   return value === undefined || (typeof value === 'string' &&
     /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value));
@@ -339,45 +445,117 @@ function valid(data) {
     item && Number.isSafeInteger(item.id) && typeof item.name === 'string' &&
     item.name.trim() && typeof item.place === 'string' && item.place.trim() &&
     typeof item.note === 'string' &&
-    validPhoto(item.photo) && validPhoto(item.placePhoto) &&
+    validPhoto(item.photo) && validPhoto(item.extraPhoto) && validPhoto(item.placePhoto) &&
     (item.usedUp === undefined || typeof item.usedUp === 'boolean')
   ) && new Set(data.map(item => item.id)).size === data.length;
 }
 
-async function initializeInventory() {
+let database;
+let backupFolder;
+let revision = 0;
+let writing = false;
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('personal-inventory', 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore('items', {keyPath: 'id'});
+      request.result.createObjectStore('metadata');
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('資料庫被其他分頁占用'));
+  });
+}
+
+function transaction(work) {
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(['items', 'metadata'], 'readwrite');
+    tx.oncomplete = resolve;
+    tx.onabort = () => reject(tx.error);
+    const items = tx.objectStore('items');
+    const metadata = tx.objectStore('metadata');
+    const state = metadata.get('revision');
+    state.onsuccess = () => {
+      try {
+        work(items, metadata, state.result);
+      } catch (error) {
+        tx.abort();
+        reject(error);
+      }
+    };
+  });
+}
+
+async function initializeStorage() {
   try {
     database = await openDatabase();
-    let stored = await dbGet();
-    if (stored === undefined) {
-      // Only migrate legacy data if this same HTTPS origin has it.
-      const legacy = localStorage.getItem(key);
-      stored = legacy === null ? [] : JSON.parse(legacy);
-      if (!valid(stored)) throw new Error('Invalid legacy inventory');
-      await dbPut(stored);
-    }
-    if (!valid(stored)) throw new Error('Invalid inventory');
-    entries = stored;
+    database.onversionchange = () => database.close();
+    await transaction((items, metadata, storedRevision) => {
+      if (storedRevision === undefined) {
+        const legacy = JSON.parse(localStorage.getItem(key) ?? '[]');
+        if (!valid(legacy)) throw new Error('舊清冊格式有誤');
+        for (const item of legacy) items.put(item);
+        metadata.put(0, 'revision');
+      }
+      const folder = metadata.get('backup-folder');
+      folder.onsuccess = () => { backupFolder = folder.result; };
+      revision = storedRevision ?? 0;
+      const request = items.getAll();
+      request.onsuccess = () => {
+        entries = request.result.sort((a, b) => b.id - a.id);
+      };
+    });
     readable = true;
-    render();
-  } catch (error) {
-    readable = false;
-    status.textContent = '無法讀取本機清冊，請勿新增或覆蓋資料。請檢查瀏覽器儲存權限，或使用備份還原。';
-    console.error(error);
+  } catch {
+    entries = [];
+    backupStatus.textContent = database
+      ? '無法讀取清冊。若有備份，可使用下方的匯入功能。'
+      : '無法開啟瀏覽器的清冊資料庫。請用原本的瀏覽器開啟清冊後重試。';
   }
+  render();
 }
 
 async function save(next, message, feedback = status, restore = false) {
-  if (!readable && !restore) {
-    feedback.textContent = '目前無法讀取原有清冊，請先檢查瀏覽器設定或匯入備份。';
+  if (writing) {
+    feedback.textContent = '清冊正在儲存，請稍候。';
     return false;
   }
-  try {
-    if (!database) database = await openDatabase();
-    await dbPut(next);
-  } catch (error) {
-    console.error(error);
-    feedback.textContent = '儲存失敗。請檢查手機儲存空間及瀏覽器權限。';
+  if (!database || (!readable && !restore)) {
+    feedback.textContent = '目前無法儲存清冊。請確認瀏覽器可使用本機資料庫。';
     return false;
+  }
+  writing = true;
+  let changedElsewhere = false;
+  try {
+    await transaction((items, metadata, storedRevision) => {
+      if ((storedRevision ?? 0) !== revision) {
+        changedElsewhere = true;
+        throw new Error('清冊已在其他分頁更新');
+      }
+      if (restore) {
+        items.clear();
+        for (const item of next) items.put(item);
+      } else {
+        const before = new Map(entries.map(item => [item.id, item]));
+        for (const item of next) {
+          if (before.get(item.id) !== item) items.put(item);
+          before.delete(item.id);
+        }
+        for (const id of before.keys()) items.delete(id);
+      }
+      metadata.put(revision + 1, 'revision');
+    });
+    revision++;
+  } catch (error) {
+    feedback.textContent = changedElsewhere
+      ? '清冊已在其他分頁更新。請重新整理後再操作。'
+      : error?.name === 'QuotaExceededError'
+        ? '瀏覽器的清冊儲存空間不足。請釋出空間後重試。'
+        : '清冊儲存失敗。請確認瀏覽器允許本機儲存，再試一次。';
+    return false;
+  } finally {
+    writing = false;
   }
   readable = true;
   entries = next;
@@ -390,6 +568,7 @@ function resetForm() {
   editing = null;
   form.reset();
   showPhoto('');
+  showExtraPhoto('');
   activePlace = '';
   showPlacePhoto('');
   byId('form-title').textContent = '新增物品';
@@ -482,26 +661,36 @@ function render() {
     const card = element('article', '', list);
     element('h3', item.name, card);
     element('p', item.place, card).className = 'place';
-    const photos = [[item.photo, '物品照片'], [photoForPlace(item.place), '收納位置照片']];
-    if (photos.some(([source]) => source)) {
+    const photos = [[item.photo, '物品照片'], [item.extraPhoto, '第二張物品照片'], [photoForPlace(item.place), '收納位置照片']];
+    if (item.note || photos.some(([source]) => source)) {
       const gallery = element('div', '', card);
       gallery.className = 'gallery';
       for (const [source, label] of photos) {
         if (!source) continue;
         const figure = element('figure', '', gallery);
-        const link = element('a', '', figure);
-        link.href = source;
-        link.download = label + '.jpg';
-        link.setAttribute('aria-label', '下載' + label);
-        const thumbnail = element('img', '', link);
+        const title = item.name + '的' + label;
+        const button = element('button', '', figure);
+        button.type = 'button';
+        button.className = 'photo-zoom';
+        button.setAttribute('aria-label', '放大查看' + title);
+        button.onclick = () => openPhoto(source, title, label);
+        const thumbnail = element('img', '', button);
         thumbnail.className = 'photo';
         thumbnail.alt = item.name + '的' + label;
         thumbnail.loading = 'lazy';
         thumbnail.src = source;
         element('figcaption', label, figure);
       }
+      if (item.note) {
+        const note = element('div', '', gallery);
+        note.className = 'item-note';
+        note.tabIndex = 0;
+        note.setAttribute('role', 'region');
+        note.setAttribute('aria-label', '備註');
+        element('strong', '備註', note);
+        element('p', item.note, note);
+      }
     }
-    if (item.note) element('p', item.note, card);
     const actions = element('div', '', card);
     actions.className = 'actions';
     element('button', '編輯／移動', actions).onclick = () => {
@@ -511,6 +700,7 @@ function render() {
       fields.place.value = item.place;
       fields.note.value = item.note;
       showPhoto(item.photo ?? '');
+      showExtraPhoto(item.extraPhoto ?? '');
       activePlace = item.place;
       showPlacePhoto(photoForPlace(item.place));
       byId('form-title').textContent = '編輯物品';
@@ -530,7 +720,7 @@ function render() {
 form.onsubmit = async event => {
   event.preventDefault();
   if (saveButton.disabled) return;
-  if (photoStatus.textContent === '正在讀取照片…' || placeStatus.textContent === '正在讀取位置照片…') {
+  if (extraLoading || photoStatus.textContent === '正在讀取照片…' || placeStatus.textContent === '正在讀取位置照片…') {
     status.textContent = '照片讀取完成後即可儲存。';
     return;
   }
@@ -549,10 +739,11 @@ form.onsubmit = async event => {
   while (editing === null && entries.some(item => item.id === id)) id++;
   const item = {id, name, place, note: fields.note.value.trim()};
   if (photo) item.photo = photo;
+  if (extraPhoto) item.extraPhoto = extraPhoto;
   if (placePhoto) item.placePhoto = placePhoto;
   const next = editing === null ? [item, ...entries] : entries.map(entry => entry.id === id ? item : entry);
   const linked = next.map(entry => {
-    if (entry.place !== place) return entry;
+    if (entry.place !== place || (entry.placePhoto ?? '') === placePhoto) return entry;
     const updated = {...entry};
     if (placePhoto) updated.placePhoto = placePhoto;
     else delete updated.placePhoto;
@@ -582,6 +773,30 @@ locationFilter.onchange = () => {
   render();
 };
 
+const backupFolderButton = byId('backup-folder');
+backupFolderButton.hidden = typeof window.showDirectoryPicker !== 'function' ||
+  typeof window.showSaveFilePicker !== 'function';
+const backupFolderHint = byId('backup-folder-hint');
+backupFolderHint.hidden = backupFolderButton.hidden;
+backupFolderButton.setAttribute('aria-describedby', backupFolderHint.id);
+backupFolderButton.onclick = async () => {
+  if (!database) {
+    backupStatus.textContent = '清冊資料庫尚未就緒，請稍後再試。';
+    return;
+  }
+  try {
+    const folder = await window.showDirectoryPicker({
+      id: 'inventory-folder',
+      ...(backupFolder ? {startIn: backupFolder} : {})
+    });
+    await transaction((items, metadata) => metadata.put(folder, 'backup-folder'));
+    backupFolder = folder;
+    backupStatus.textContent = '備份資料夾已設定為「' + folder.name + '」。';
+  } catch (error) {
+    if (error?.name !== 'AbortError') backupStatus.textContent = '無法記住備份資料夾，請再試一次。';
+  }
+};
+
 byId('export').onclick = async () => {
   if (!readable) {
     backupStatus.textContent = '目前無法讀取清冊，無法匯出。';
@@ -595,6 +810,7 @@ byId('export').onclick = async () => {
     try {
       handle = await window.showSaveFilePicker({
         id: 'inventory-backup',
+        ...(backupFolder ? {startIn: backupFolder} : {}),
         suggestedName: filename,
         types: [{description: '物品清冊備份', accept: {'application/json': ['.json']}}]
       });
@@ -624,11 +840,36 @@ byId('export').onclick = async () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 const file = byId('file');
-byId('import').onclick = () => file.click();
+byId('import').onclick = async () => {
+  if (typeof window.showOpenFilePicker !== 'function') {
+    file.click();
+    return;
+  }
+  let handle;
+  try {
+    [handle] = await window.showOpenFilePicker({
+      id: 'inventory-backup',
+      ...(backupFolder ? {startIn: backupFolder} : {}),
+      types: [{description: '物品清冊備份', accept: {'application/json': ['.json']}}]
+    });
+  } catch (error) {
+    if (error.name !== 'AbortError') file.click();
+    return;
+  }
+  if (!handle) return;
+  try {
+    await importBackup(await handle.getFile());
+  } catch {
+    backupStatus.textContent = '無法開啟備份檔案，請再試一次。';
+  }
+};
 file.onchange = async () => {
   const selected = file.files[0];
   file.value = '';
-  if (!selected) return;
+  if (selected) await importBackup(selected);
+};
+
+async function importBackup(selected) {
   try {
     const data = JSON.parse(await selected.text());
     if (!valid(data)) throw new Error('Invalid backup');
@@ -643,12 +884,48 @@ file.onchange = async () => {
   } catch {
     backupStatus.textContent = '無法讀取備份，請選擇由此清冊匯出的 JSON 檔案。';
   }
-};
-initializeInventory();
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.warn));
 }
+function connectCamera(button, picker, allowed = () => true) {
+  const camera = document.createElement('input');
+  camera.type = 'file';
+  camera.accept = 'image/*';
+  camera.hidden = true;
+  camera.setAttribute('capture', 'environment');
+  if (!('capture' in camera) || !navigator.maxTouchPoints) return;
+  picker.after(camera);
+  button.hidden = false;
+  camera.onchange = picker.onchange;
+  button.onclick = () => {
+    if (!allowed()) return;
+    camera.value = '';
+    camera.click();
+  };
+}
+
+connectCamera(byId('photo-camera'), photoFile);
+connectCamera(byId('extra-camera'), extraFile);
+connectCamera(byId('place-camera'), placeFile, () => {
+  if (fields.place.value.trim()) return true;
+  placeStatus.textContent = '請先輸入收納位置，再拍照。';
+  fields.place.focus();
+  return false;
+});
+initializeStorage();
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
