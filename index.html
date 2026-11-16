@@ -891,7 +891,7 @@ function connectCamera(button, picker, allowed = () => true) {
   camera.accept = 'image/*';
   camera.hidden = true;
   camera.setAttribute('capture', 'environment');
-  if (!('capture' in camera) || !navigator.maxTouchPoints) return;
+  // Keep the camera action visible: capture is a hint, not a reliable feature-detection property.
   picker.after(camera);
   button.hidden = false;
   camera.onchange = picker.onchange;
