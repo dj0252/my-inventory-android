@@ -115,7 +115,6 @@ button:disabled{box-shadow:inset 0 0 0 var(--button-ring-width,2px) #fff}
 </section>
 <footer><p>清冊和縮圖儲存在這個瀏覽器。辨識需要連網載入模型，照片在瀏覽器內處理。換裝置或清除瀏覽資料前，可先匯出備份。</p>
 <div class="actions"><button id="export">匯出備份</button><button id="import">匯入備份</button><input id="file" type="file" accept=".json,application/json" hidden></div>
-<div class="actions backup-settings"><button id="local-backup-download">下載本機自動備份</button></div><p id="local-backup-status" role="status">正在檢查本機自動備份…</p>
 <div class="actions backup-settings"><button id="backup-folder" hidden>設定備份資料夾</button><span id="backup-folder-hint" hidden>第一次使用備份功能前，請先設定備份資料夾。</span></div>
 <p id="backup-status" role="status"></p></footer>
 <dialog id="photo-dialog" aria-labelledby="photo-dialog-title">
@@ -455,61 +454,20 @@ let database;
 let backupFolder;
 let revision = 0;
 let writing = false;
-let autoBackupTimer;
-const localBackupStatus = byId('local-backup-status');
-const autoBackupKey = 'latest';
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('personal-inventory', 2);
+    const request = indexedDB.open('personal-inventory', 1);
     request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains('items')) request.result.createObjectStore('items', {keyPath: 'id'});
-      if (!request.result.objectStoreNames.contains('metadata')) request.result.createObjectStore('metadata');
-      if (!request.result.objectStoreNames.contains('local-backups')) request.result.createObjectStore('local-backups');
+      request.result.createObjectStore('items', {keyPath: 'id'});
+      request.result.createObjectStore('metadata');
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-    request.onblocked = () => { backupStatus.textContent = '資料庫正在升級，請關閉其他開著物品清冊的分頁，再重新整理。'; reject(new Error('資料庫被其他分頁占用')); };
+    request.onblocked = () => reject(new Error('資料庫被其他分頁占用'));
   });
 }
 
-function readAutoBackup() {
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction('local-backups', 'readonly');
-    const request = tx.objectStore('local-backups').get(autoBackupKey);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-async function refreshAutoBackupStatus() {
-  try {
-    const saved = await readAutoBackup();
-    localBackupStatus.textContent = saved
-      ? '本機自動備份：' + new Date(saved.at).toLocaleString('zh-TW') + '（' + saved.items.length + ' 筆）。僅保存在這支手機的瀏覽器。'
-      : '尚無本機自動備份。';
-  } catch {
-    localBackupStatus.textContent = '無法讀取本機自動備份，請使用手動匯出。';
-  }
-}
-async function writeAutoBackup(snapshot) {
-  if (!database || !readable) return;
-  try {
-    await new Promise((resolve, reject) => {
-      const tx = database.transaction('local-backups', 'readwrite');
-      tx.objectStore('local-backups').put({at: Date.now(), items: snapshot}, autoBackupKey);
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-    await refreshAutoBackupStatus();
-  } catch {
-    localBackupStatus.textContent = '本機自動備份失敗（可能是空間不足）。請立即使用「匯出備份」保存 JSON 檔。';
-  }
-}
-function scheduleAutoBackup() {
-  clearTimeout(autoBackupTimer);
-  autoBackupTimer = setTimeout(() => { void writeAutoBackup(entries.slice()); }, 1500);
-}
 function transaction(work) {
   return new Promise((resolve, reject) => {
     const tx = database.transaction(['items', 'metadata'], 'readwrite');
@@ -549,15 +507,7 @@ async function initializeStorage() {
       };
     });
     readable = true;
-    try {
-      const saved = await readAutoBackup();
-      if (!saved) scheduleAutoBackup();
-      else await refreshAutoBackupStatus();
-    } catch {
-      localBackupStatus.textContent = '自動備份暫時無法讀取；清冊資料不受影響，仍可手動匯出。';
-    }
-  } catch (error) {
-    console.error('清冊初始化失敗', error);
+  } catch {
     entries = [];
     backupStatus.textContent = database
       ? '無法讀取清冊。若有備份，可使用下方的匯入功能。'
@@ -609,7 +559,6 @@ async function save(next, message, feedback = status, restore = false) {
   }
   readable = true;
   entries = next;
-  scheduleAutoBackup();
   feedback.textContent = message;
   render();
   return true;
@@ -848,25 +797,6 @@ backupFolderButton.onclick = async () => {
   }
 };
 
-byId('local-backup-download').onclick = async () => {
-  try {
-    const saved = await readAutoBackup();
-    if (!saved || !valid(saved.items)) {
-      localBackupStatus.textContent = '尚無可下載的本機自動備份。';
-      return;
-    }
-    const blob = new Blob([JSON.stringify(saved.items, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '物品清冊本機自動備份-' + new Date(saved.at).toISOString().slice(0, 10) + '.json';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-    localBackupStatus.textContent = '已提出下載要求。請確認手機下載清單中有備份檔。';
-  } catch {
-    localBackupStatus.textContent = '下載本機自動備份失敗，請改用「匯出備份」。';
-  }
-};
 byId('export').onclick = async () => {
   if (!readable) {
     backupStatus.textContent = '目前無法讀取清冊，無法匯出。';
