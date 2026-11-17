@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>大海撈針</title>
-<meta name="app-version" content="1.0.0-rc.3">
+<meta name="app-version" content="1.0.0-rc.5">
 <link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#24533f">
 <style>
@@ -977,7 +977,10 @@ if ('serviceWorker' in navigator) {
   });
 
   async function checkForUpdate(manual = false) {
-    if (!registration || checkUpdate.disabled) return;
+    if (!registration || checkUpdate.disabled) {
+      if (manual) showPwaStatus('更新功能尚未準備好，請稍候再試。');
+      return;
+    }
     checkUpdate.disabled = true;
     try {
       await registration.update();
@@ -996,7 +999,7 @@ if ('serviceWorker' in navigator) {
       }
       if (manual) {
         showPwaStatus(worker?.state === 'redundant' ? '新版本下載失敗，請稍後再試。'
-          : registration.waiting ? '找到新版本。' : '目前沒有可套用的更新。');
+          : registration.waiting ? '找到新版本，請按「更新程式」。' : '已完成檢查，目前沒有可套用的更新。');
       }
     } catch {
       if (manual) showPwaStatus('無法檢查更新，請確認網路後再試。');
