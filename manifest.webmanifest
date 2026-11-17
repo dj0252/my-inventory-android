@@ -1,17 +1,24 @@
 {
-  "name": "我的物品清冊",
-  "short_name": "物品清冊",
-  "description": "離線查找物品及存放位置",
-  "start_url": "./index.html",
+  "name": "大海撈針",
+  "short_name": "大海撈針",
+  "description": "個人物品清冊與位置查找",
+  "lang": "zh-Hant",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f6f4ed",
   "theme_color": "#24533f",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
