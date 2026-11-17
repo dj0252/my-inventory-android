@@ -1,5 +1,5 @@
 // Increment VERSION together with the app-version meta tag on each release.
-const VERSION = '1.0.0-rc.2';
+const VERSION = '1.0.0-rc.3';
 const scope = new URL(self.registration.scope);
 const cachePrefix = 'dahaizhaozhen-shell:' + scope.pathname + ':';
 const cacheName = cachePrefix + VERSION;
@@ -9,7 +9,7 @@ const [index] = shell;
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
-    const responses = await Promise.all(shell.map(url => fetch(url, {cache: 'reload'})));
+    const responses = await Promise.all(shell.map((url, i) => fetch(i === 0 ? scope.href : url, {cache: 'reload'})));
     if (responses.some(response => !response.ok || response.redirected)) {
       throw new Error('App shell is unavailable');
     }
