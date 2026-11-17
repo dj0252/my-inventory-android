@@ -1,44 +1,50 @@
-/* Increment this cache identifier for each released application update. */
-const CACHE = 'dahaizhaozhen-pwa-test-2';
-const APP_SHELL = ['./index.html', './manifest.webmanifest', './icon.svg'];
-const APP_PATH = new URL('./index.html', self.registration.scope).pathname;
+// Increment VERSION together with the app-version meta tag on each release.
+const VERSION = '1.0.0-rc.1';
+const scope = new URL(self.registration.scope);
+const cachePrefix = 'dahaizhaozhen-shell:' + scope.pathname + ':';
+const cacheName = cachePrefix + VERSION;
+const shell = ['index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png']
+  .map(path => new URL(path, scope).href);
+const [index] = shell;
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
+  event.waitUntil((async () => {
+    const responses = await Promise.all(shell.map(url => fetch(url, {cache: 'reload'})));
+    if (responses.some(response => !response.ok || response.redirected)) {
+      throw new Error('App shell is unavailable');
+    }
+    const html = await responses[0].clone().text();
+    if (!html.includes('<meta name="app-version" content="' + VERSION + '">')) {
+      throw new Error('App shell version does not match the worker');
+    }
+    const cache = await caches.open(cacheName);
+    await Promise.all(shell.map((url, i) => cache.put(url, responses[i])));
+  })());
 });
+
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key.startsWith('dahaizhaozhen-pwa-') && key !== CACHE)
+    await Promise.all(keys.filter(key => key.startsWith(cachePrefix) && key !== cacheName)
       .map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
+
 self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || !url.pathname.startsWith(new URL(self.registration.scope).pathname)) return;
-  if (request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        // Online-first: always try the latest HTML rather than returning an old shell.
-        const response = await fetch(request, {cache: 'no-store'});
-        if (response.ok && url.pathname === APP_PATH) {
-          const cache = await caches.open(CACHE);
-          await cache.put('./index.html', response.clone());
-        }
-        return response;
-      } catch {
-        const fallback = await caches.match('./index.html');
-        return fallback || Response.error();
-      }
-    })());
-    return;
-  }
-  // Cache only explicitly listed static assets; never cache backup files or user photos.
-  if (!APP_SHELL.some(path => url.pathname === new URL(path, self.registration.scope).pathname)) return;
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
+  const target = url.origin + url.pathname;
+  const asset = request.mode === 'navigate' && (target === scope.href || target === index)
+    ? index : shell.includes(target) ? target : null;
+  if (!asset) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(cacheName);
+    return (await cache.match(asset)) || fetch(request);
+  })());
 });

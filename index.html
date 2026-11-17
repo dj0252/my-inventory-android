@@ -3,6 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>大海撈針</title>
+<meta name="app-version" content="1.0.0-rc.1">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#24533f">
 <style>
@@ -66,7 +67,7 @@ button:disabled{box-shadow:inset 0 0 0 var(--button-ring-width,2px) #fff}
 }
 @media(pointer:coarse){.photo-action{min-height:44px}}</style>
 <main>
-<header><h1>大海撈針</h1><p>記下你有哪些東西，以及去哪裡找。</p><div id="app-update" role="status" hidden><p>大海撈針有新版本可以更新。</p><button id="apply-update" type="button">更新程式</button></div></header>
+<header><h1>大海撈針</h1><p>記下你有哪些東西，以及去哪裡找。</p><p><span id="app-version"></span> <button id="check-update" type="button" hidden>檢查更新</button> <button id="install-app" type="button" hidden>安裝到手機</button></p><p id="pwa-status" role="status" hidden></p><div id="app-update" role="status" hidden><p>大海撈針有新版本可以更新。</p><button id="apply-update" type="button">更新程式</button></div></header>
 <nav class="actions" role="tablist" aria-label="清冊功能">
 <button type="button" id="add-tab" role="tab" aria-controls="editor" aria-selected="false" tabindex="-1">新增物品</button>
 <button type="button" id="find-tab" role="tab" aria-controls="finder" aria-selected="true">尋找物品</button>
@@ -912,38 +913,117 @@ connectCamera(byId('place-camera'), placeFile, () => {
   fields.place.focus();
   return false;
 });
-// Updates are opt-in to avoid interrupting unsaved edits.
+const version = document.querySelector('meta[name="app-version"]').content;
+byId('app-version').textContent = '版本 ' + version;
+const pwaStatus = byId('pwa-status');
+function showPwaStatus(message) {
+  pwaStatus.textContent = message;
+  pwaStatus.hidden = false;
+}
+
+let installPrompt;
+const installApp = byId('install-app');
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  installPrompt = event;
+  installApp.hidden = false;
+});
+installApp.addEventListener('click', async () => {
+  const prompt = installPrompt;
+  if (!prompt) return;
+  installPrompt = null;
+  installApp.hidden = true;
+  try {
+    await prompt.prompt();
+  } catch {
+    showPwaStatus('請從 Chrome 選單選擇「安裝應用程式」或「加到主畫面」。');
+  }
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  installApp.hidden = true;
+});
+
 if ('serviceWorker' in navigator) {
-  let registration;
-  let refreshing = false;
-  let userApprovedUpdate = false;
+  const workers = navigator.serviceWorker;
   const updateNotice = byId('app-update');
   const applyUpdate = byId('apply-update');
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing || !userApprovedUpdate) return;
-    refreshing = true;
-    location.reload();
+  const checkUpdate = byId('check-update');
+  let registration;
+  let approved = false;
+  let hadController = Boolean(workers.controller);
+  const syncNotice = () => {
+    updateNotice.hidden = !registration?.waiting || !workers.controller;
+    applyUpdate.disabled = approved;
+  };
+
+  workers.addEventListener('controllerchange', () => {
+    if (approved) {
+      location.reload();
+      return;
+    }
+    if (hadController) showPwaStatus('程式已在其他視窗更新。儲存編輯後，請重新開啟此頁。');
+    hadController = Boolean(workers.controller);
+    syncNotice();
   });
-  navigator.serviceWorker.register('./sw.js').then(reg => {
+
+  async function checkForUpdate(manual = false) {
+    if (!registration || checkUpdate.disabled) return;
+    checkUpdate.disabled = true;
+    try {
+      await registration.update();
+      const worker = registration.installing;
+      if (worker && worker.state !== 'installed' && worker.state !== 'redundant' &&
+          worker.state !== 'activated') {
+        await new Promise(resolve => {
+          const onStateChange = () => {
+            if (!['installed', 'redundant', 'activated'].includes(worker.state)) return;
+            worker.removeEventListener('statechange', onStateChange);
+            resolve();
+          };
+          worker.addEventListener('statechange', onStateChange);
+          onStateChange();
+        });
+      }
+      if (manual) {
+        showPwaStatus(worker?.state === 'redundant' ? '新版本下載失敗，請稍後再試。'
+          : registration.waiting ? '找到新版本。' : '目前沒有可套用的更新。');
+      }
+    } catch {
+      if (manual) showPwaStatus('無法檢查更新，請確認網路後再試。');
+    } finally {
+      checkUpdate.disabled = false;
+      syncNotice();
+    }
+  }
+
+  workers.register('./sw.js', {updateViaCache: 'none'}).then(reg => {
     registration = reg;
-    const showUpdate = () => {
-      if (reg.waiting && navigator.serviceWorker.controller) updateNotice.hidden = false;
-    };
-    showUpdate();
-    reg.addEventListener('updatefound', () => {
-      const worker = reg.installing;
-      if (worker) worker.addEventListener('statechange', showUpdate);
-    });
+    checkUpdate.hidden = false;
+    const watchInstall = () => reg.installing?.addEventListener('statechange', syncNotice);
+    reg.addEventListener('updatefound', watchInstall);
+    watchInstall();
+    syncNotice();
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) reg.update().catch(() => {});
+      if (!document.hidden) checkForUpdate();
     });
-    reg.update().catch(() => {});
-  }).catch(error => console.warn('離線安裝功能無法啟動', error));
+    window.addEventListener('online', () => checkForUpdate());
+    checkForUpdate();
+  }).catch(() => showPwaStatus('離線功能啟動失敗，請連線後重新開啟此頁。'));
+
+  checkUpdate.addEventListener('click', () => checkForUpdate(true));
   applyUpdate.addEventListener('click', () => {
-    if (!registration?.waiting) return;
-    if (!confirm('確定更新程式？請先儲存正在編輯的物品。')) return;
-    userApprovedUpdate = true;
-    registration.waiting.postMessage({type:'SKIP_WAITING'});
+    if (!registration?.waiting || approved) return;
+    if (writing) {
+      showPwaStatus('正在儲存物品，請稍候再更新。');
+      return;
+    }
+    if (!confirm('更新會重新開啟程式。請先儲存編輯中的物品。確定更新？')) return;
+    const worker = registration.waiting;
+    if (!worker) return;
+    approved = true;
+    syncNotice();
+    worker.postMessage({type: 'SKIP_WAITING'});
   });
 }
 initializeStorage();
