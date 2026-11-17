@@ -916,10 +916,11 @@ connectCamera(byId('place-camera'), placeFile, () => {
 if ('serviceWorker' in navigator) {
   let registration;
   let refreshing = false;
+  let userApprovedUpdate = false;
   const updateNotice = byId('app-update');
   const applyUpdate = byId('apply-update');
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
+    if (refreshing || !userApprovedUpdate) return;
     refreshing = true;
     location.reload();
   });
@@ -941,6 +942,7 @@ if ('serviceWorker' in navigator) {
   applyUpdate.addEventListener('click', () => {
     if (!registration?.waiting) return;
     if (!confirm('確定更新程式？請先儲存正在編輯的物品。')) return;
+    userApprovedUpdate = true;
     registration.waiting.postMessage({type:'SKIP_WAITING'});
   });
 }
